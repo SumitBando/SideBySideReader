@@ -1,0 +1,77 @@
+# Specifications: Side-by-Side Dual-Language Reader
+
+## 1. Application Overview
+The **Side-by-Side Dual-Language Reader** is an interactive web application designed for language learners. It renders EPUB ebooks in a dual-pane layout with synchronized sentence highlighting, word/phrase alignment matching, and verb grammar analysis.
+
+---
+
+## 2. Core Architecture & Tech Stack
+* **Language & Runtime**: Python 3.14+ managed via `uv`
+* **Web Framework**: **FastHTML** (`python-fasthtml`) with `uvicorn`
+* **EPUB Parsing**: `ebooklib` + `BeautifulSoup4`
+* **Translation & Alignment Engine**: Gemini API (`google-genai`) with fallback online translator
+* **Local Caching**: File-based JSON caching in `./cache` (MD5 hash keyed per sentence block)
+* **Frontend Interactivity**: Vanilla JS & CSS Grid/Flex design system with theme tokens
+
+---
+
+## 3. Detailed Features & Behaviors
+
+### 3.1 Dual-Pane Layout & Typography
+* **Left Pane**: Original source text (e.g. Spanish).
+* **Right Pane**: Translated target text (English).
+* **DOM Tag Preservation**: HTML heading structures (`<h1>`-`<h6>`), paragraphs (`<p>`), blockquotes, and `<div>` tags from original EPUB files are preserved in both panes.
+* **Theme Modes**:
+  * Light Mode (default): slate/white palette
+  * Dark Mode: deep slate `#0f172a`
+  * Sepia Mode: warm reading tones `#fbf0d9`
+* **Font Scaling**: Dynamic font sizing (`A-` / `A+` controls) stored in browser `localStorage`.
+
+### 3.2 EPUB Extraction & Structure Preservation
+* Extracts documents and embedded CSS from `.epub` files in the root project directory.
+* Filters out nested container elements to prevent duplicate text extraction.
+* Sentence Segmentation: Splitting based on language punctuation rules (`.!?¿¡`).
+
+### 3.3 Gemini Translation & Alignment Engine
+* Model: `gemini-flash-latest` (or `gemini-2.5-flash-lite`).
+* Language Preservation Rule: If a source section is already in English, it is kept as-is without reverse translation to Spanish.
+* Dual Alignment Output:
+  * Sentence translation mapping (`src` $\leftrightarrow$ `tgt`).
+  * Word and phrase alignments (`src_words` $\leftrightarrow$ `tgt_words`).
+  * Verb Grammatical Analysis: Returns `is_verb`, `infinitive` (root verb), and `tense_person` metadata for conjugated verbs.
+
+### 3.4 Interactive Dual Highlighting & Navigation
+* **Synchronized Sentence Hover**:
+  * Hovering over a sentence in either pane instantly highlights the corresponding sentence in the opposing pane (`.sentence.active`).
+* **Word/Phrase Selection on Click**:
+  * **Darker Orange** (`.active-word-exact`): Highlights exact target word sub-matches.
+  * **Lighter Orange** (`.active-word-phrase`): Highlights parent multi-word phrase alignments.
+* **Verb Root & Grammar Popover**:
+  * Clicking a conjugated verb token in the source pane opens a popover displaying its infinitive root and tense/person breakdown.
+  * Auto-Dismiss: The popover automatically closes when moving the mouse to a different sentence or leaving sentence bounds.
+* **Opposing Pane Auto-Scroll**:
+  * Clicking/selecting a sentence smoothly scrolls the corresponding sentence in the opposite pane into view (`scrollIntoView`).
+* **Section & Book Navigation**:
+  * Keyboard Shortcuts: `ArrowLeft` (Previous Section) and `ArrowRight` (Next Section).
+  * Boundary Guards: Disable Previous/Next buttons at book boundaries (`chapter_idx <= 0` / `chapter_idx >= total - 1`).
+  * Visual Loading Feedback: Full-screen blurred overlay with CSS spinner during uncached API translation requests.
+
+---
+
+## 4. Test Suite & Verification
+* Automated Verification Script: `tests/client.py`
+* Tests:
+  1. FastHTML server status check (HTTP 200 OK).
+  2. DOM structure verification (`.sentence`, `.word-token`, `.pane`).
+  3. Section 1 token mapping integrity (validates `data-exact-target-ids` and `data-phrase-target-ids` across pane boundaries).
+
+# 5. Model choice
+## 1. gemini-3.5-flash-lite (Recommended)
+Input Price (per 1…) ~$0.075,  Output Price (per …)  ~$0.30
+- Superior Structured Output: 3.5 generation models have higher instruction-following precision when
+      generating complex JSON structures (e.g. nested src_words, tgt_words, is_verb, infinitive, and tense_person
+      arrays simultaneously).
+ - Lower Latency: Optimized TTFT (Time-To-First-Token), making uncached page flips noticeably faster for the
+      reader.
+ - Better Idiomatic Translation: Translates complex Spanish idioms and literary phrasing more naturally
+      while maintaining strict phrase boundaries.

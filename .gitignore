@@ -1,0 +1,19 @@
+# Python & Virtual Environment
+.venv/
+__pycache__/
+*.py[cod]
+
+# Secrets & Environment Variables
+.env
+.sesskey
+
+# Cache & Local Storage
+cache/
+
+# OS / Editor Files
+.DS_Store
+.vscode/
+.idea/
+
+# test .epub files
+*.epub
