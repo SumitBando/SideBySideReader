@@ -37,7 +37,8 @@ GEMINI_API_KEY=your_gemini_api_key_here
 
 1. **Clone or Navigate to the Workspace**:
    ```bash
-   cd /home/sumit/sidebyside
+   git clone git@github.com:SumitBando/SideBySideReader.git
+   cd SideBySideReader
    ```
 
 2. **Install Dependencies using `uv`**:
@@ -50,11 +51,11 @@ GEMINI_API_KEY=your_gemini_api_key_here
 ## Usage Instructions
 
 ### 1. Launch the Application
-Start the FastHTML web application server:
+Start the (FastHTML web server) application:
 ```bash
 uv run python main.py
 ```
-The server will start locally at **http://localhost:5001/**.
+The app will serve locally at **http://localhost:5001/**.
 
 ### 2. Ebook & Section Navigation
 - Use the **Book Select Dropdown** to choose any available EPUB file in the root folder.
