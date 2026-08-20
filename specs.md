@@ -29,12 +29,13 @@ The **Side-by-Side Dual-Language Reader** is an interactive web application desi
 
 ### 3.2 EPUB Extraction & Structure Preservation
 * Extracts documents and embedded CSS from `.epub` files in the root project directory.
+* **Chapter Title Resolution**: Dynamically extracts actual chapter/section names from EPUB Table of Contents (TOC), HTML heading tags (`<h1>`-`<h6>`), and document structure patterns, falling back to `Section N` only when no title is defined.
 * Filters out nested container elements to prevent duplicate text extraction.
 * Sentence Segmentation: Splitting based on language punctuation rules (`.!?¿¡`).
 
 ### 3.3 Dynamic Language Identification, Translation & Alignment Engine
 * **Automatic Language Identification**: Dynamically detects the primary non-English language in each section (e.g. Spanish, Italian, French, German, Russian, etc.) or identifies `English` if the section is entirely in English.
-* **Status Bar Language Display**: Bottom status bar renders the detected language (e.g. `Language: Italian`) alongside section navigation and token counts.
+* **Status Bar Language & Chapter Display**: Bottom status bar renders the detected language (e.g. `Language: Italian`) alongside the active chapter name, index, and token counts.
 * **Translation to English**: Translates non-English source language text into English while preserving English blocks/headings as-is without reverse translation.
 * **Dual Alignment Output**:
   * Sentence translation mapping (`src` $\leftrightarrow$ `tgt`).
@@ -53,6 +54,7 @@ The **Side-by-Side Dual-Language Reader** is an interactive web application desi
 * **Opposing Pane Auto-Scroll**:
   * Clicking/selecting a sentence smoothly scrolls the corresponding sentence in the opposite pane into view (`scrollIntoView`).
 * **Section & Book Navigation**:
+  * **Chapter Select Dropdown**: Populated with resolved chapter and section names for easy switching.
   * Keyboard Shortcuts: `ArrowLeft` (Previous Section) and `ArrowRight` (Next Section).
   * Boundary Guards: Disable Previous/Next buttons at book boundaries (`chapter_idx <= 0` / `chapter_idx >= total - 1`).
   * Visual Loading Feedback: Full-screen blurred overlay with CSS spinner during uncached API translation requests.

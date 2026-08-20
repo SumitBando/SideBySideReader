@@ -60,7 +60,7 @@ The app will serve locally at **http://localhost:5001/**.
 
 ### 2. Ebook & Section Navigation
 - Use the **Book Select Dropdown** to choose any available EPUB file in the root folder.
-- Use the **Section Dropdown** or click **Previous Section** / **Next Section** buttons to turn pages.
+- Use the **Chapter Select Dropdown** (populated with actual chapter/story titles) or click **Previous Section** / **Next Section** buttons to turn pages.
 - Alternatively, use keyboard shortcuts:
   - `ArrowLeft`: Navigate to Previous Section.
   - `ArrowRight`: Navigate to Next Section.

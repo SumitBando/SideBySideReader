@@ -627,8 +627,9 @@ def get(book: str = None, chapter_idx: int = 0):
 
     prev_chap = max(0, chapter_idx - 1)
     next_chap = min(len(chapters) - 1, chapter_idx + 1) if chapters else 0
+    current_chapter_title = chapters[chapter_idx].get("title", f"Section {chapter_idx + 1}") if chapters and 0 <= chapter_idx < len(chapters) else "No chapters loaded"
 
-    return Title("Side-by-Side Dual Reader"), Body(
+    return Title("Side-by-Side Reader"), Body(
         Style(epub_css),
         Div(
             Div(cls="spinner"),
@@ -645,8 +646,8 @@ def get(book: str = None, chapter_idx: int = 0):
                     cls="select-input"
                 ),
                 Select(
-                    *[Option(f"Section {i+1}", value=i, selected=(i == chapter_idx)) for i in range(len(chapters))],
-                    onchange=f"showLoading('Translating Section {chapter_idx+1} with Gemini...'); window.location.href='/?book=' + encodeURIComponent('{selected_book}') + '&chapter_idx=' + this.value",
+                    *[Option(chapters[i].get("title", f"Section {i+1}"), value=i, selected=(i == chapter_idx)) for i in range(len(chapters))],
+                    onchange=f"showLoading('Translating Section with Gemini...'); window.location.href='/?book=' + encodeURIComponent('{selected_book}') + '&chapter_idx=' + this.value",
                     cls="select-input"
                 ) if chapters else "",
                 Button("Dark", onclick="setTheme('dark')", cls="btn"),
@@ -683,7 +684,11 @@ def get(book: str = None, chapter_idx: int = 0):
             A("Previous Section", id="prev-btn", href=f"/?book={selected_book}&chapter_idx={prev_chap}" if chapter_idx > 0 else None, onclick="showLoading('Translating & Aligning Section with Gemini...')" if chapter_idx > 0 else None, cls=f"btn {'disabled' if chapter_idx <= 0 else ''}"),
             Div(
                 Span(f"Language: {detected_language}", id="status-language", style="font-weight: 600; margin-right: 8px;"),
-                Span(f"• Section {chapter_idx + 1} of {len(chapters)}" if chapters else "• No chapters loaded"),
+                Span(
+                    f"• {current_chapter_title} of {len(chapters)}" if current_chapter_title.startswith("Section ") else f"• {current_chapter_title} ({chapter_idx + 1} of {len(chapters)})"
+                    if chapters else "• No chapters loaded",
+                    id="status-chapter-title"
+                ),
                 Span(f" • {aligner.model_name} tokens: {tokens_used:,}" if tokens_used else f" • {aligner.model_name} tokens: 0", style="margin-left: 8px; opacity: 0.8;"),
                 style="display: flex; align-items: center;"
             ),

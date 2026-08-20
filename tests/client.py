@@ -34,12 +34,22 @@ def test_language_and_word_alignments(book_name: str, chapter_idx: int, expected
         assert left_pane is not None, "Left pane missing"
         assert right_pane is not None, "Right pane missing"
 
-        # Verify bottom status bar language display
+        # Verify bottom status bar language and chapter title display
         status_lang_elem = soup.find('span', id='status-language')
         assert status_lang_elem is not None, "Bottom status bar language element missing"
         status_lang_text = status_lang_elem.get_text().strip()
         print(f"[TEST] Bottom status bar language: '{status_lang_text}' (Expected: 'Language: {expected_language}')")
         assert f"Language: {expected_language}" in status_lang_text, f"Expected 'Language: {expected_language}' in status bar, got '{status_lang_text}'"
+
+        status_title_elem = soup.find('span', id='status-chapter-title')
+        assert status_title_elem is not None, "Bottom status bar chapter title missing"
+        print(f"[TEST] Bottom status bar chapter title: '{status_title_elem.get_text().strip()}'")
+
+        # Verify chapter select options have actual chapter names
+        options = [opt.get_text().strip() for opt in soup.find_all('option')]
+        non_generic_options = [opt for opt in options if not opt.startswith('Section ') and len(opt) > 0]
+        print(f"[TEST] Found {len(options)} total options, {len(non_generic_options)} named chapters in dropdown.")
+        assert len(non_generic_options) > 0, "Expected actual chapter titles in select options"
 
         # Verify left pane header indicates detected language
         pane_header = soup.find('div', class_='pane-header')
