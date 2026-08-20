@@ -1,16 +1,32 @@
 import urllib.request
-import json
-import os
+import urllib.parse
 import sys
-import re
+import os
 from bs4 import BeautifulSoup
 
-def test_section_one_word_alignments():
-    url = "http://localhost:5001/?book=Yo%20mat%C3%A9%20a%20Kennedy%20-%C2%A0V%C3%A1zquez%20Montalb%C3%A1n,%20Manuel%20-%C2%A01971.epub&chapter_idx=0"
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+def get_page_content(path: str) -> str:
+    url = f"http://localhost:5001{path}"
     try:
         req = urllib.request.urlopen(url)
-        assert req.status == 200, f"Expected 200 OK status, got {req.status}"
-        html_content = req.read().decode('utf-8')
+        if req.status == 200:
+            return req.read().decode('utf-8')
+    except Exception:
+        pass
+    
+    # Fallback to TestClient if standalone server not active
+    from starlette.testclient import TestClient
+    from main import app
+    client = TestClient(app)
+    resp = client.get(path)
+    assert resp.status_code == 200, f"Expected 200 OK, got {resp.status_code}"
+    return resp.text
+
+def test_language_and_word_alignments(book_name: str, chapter_idx: int, expected_language: str):
+    path = f"/?book={urllib.parse.quote(book_name)}&chapter_idx={chapter_idx}"
+    try:
+        html_content = get_page_content(path)
         soup = BeautifulSoup(html_content, 'html.parser')
 
         left_pane = soup.find('div', id='left-pane')
@@ -18,9 +34,22 @@ def test_section_one_word_alignments():
         assert left_pane is not None, "Left pane missing"
         assert right_pane is not None, "Right pane missing"
 
+        # Verify bottom status bar language display
+        status_lang_elem = soup.find('span', id='status-language')
+        assert status_lang_elem is not None, "Bottom status bar language element missing"
+        status_lang_text = status_lang_elem.get_text().strip()
+        print(f"[TEST] Bottom status bar language: '{status_lang_text}' (Expected: 'Language: {expected_language}')")
+        assert f"Language: {expected_language}" in status_lang_text, f"Expected 'Language: {expected_language}' in status bar, got '{status_lang_text}'"
+
+        # Verify left pane header indicates detected language
+        pane_header = soup.find('div', class_='pane-header')
+        assert pane_header is not None, "Pane header missing"
+        print(f"[TEST] Left pane header: '{pane_header.get_text().strip()}'")
+        assert expected_language in pane_header.get_text(), f"Expected '{expected_language}' in pane header, got '{pane_header.get_text()}'"
+
         src_tokens = left_pane.find_all('span', class_='word-token')
         tgt_tokens = right_pane.find_all('span', class_='word-token')
-        print(f"[TEST] Extracted {len(src_tokens)} Spanish source tokens and {len(tgt_tokens)} English target tokens from Section 1.")
+        print(f"[TEST] Extracted {len(src_tokens)} source tokens ({expected_language}) and {len(tgt_tokens)} English target tokens.")
 
         tgt_ids_set = set(t.get('id') for t in tgt_tokens)
 
@@ -40,21 +69,41 @@ def test_section_one_word_alignments():
                 elif tid:
                     valid_mappings += 1
 
-        print(f"[TEST] Tested all Spanish tokens in Section 1. Total valid target ID pairs: {valid_mappings}, Errors found: {len(errors)}")
+        print(f"[TEST] Tested all tokens for {expected_language}. Total valid target ID pairs: {valid_mappings}, Errors found: {len(errors)}")
 
         if errors:
             for err in errors[:10]:
                 print(f"  [ERROR] {err}")
             return False
 
-        print("[SUCCESS] All Spanish word tokens in Section 1 map strictly to valid sequence pairs in the English pane!")
+        print(f"[SUCCESS] All {expected_language} word tokens map strictly to valid sequence pairs in the English pane!")
         return True
 
     except Exception as e:
-        print(f"[FAIL] Test error: {e}")
+        print(f"[FAIL] Test error on {book_name} (Section {chapter_idx}): {e}")
         return False
 
+def run_all_tests():
+    print("=== Running Smoke Tests ===")
+    # 1. Spanish Book Test
+    spanish_book = "Yo maté a Kennedy - Vázquez Montalbán, Manuel - 1971.epub"
+    es_ok = test_language_and_word_alignments(spanish_book, chapter_idx=0, expected_language="Spanish")
+    if not es_ok:
+        return False
+
+    print("\n--------------------------------------------------\n")
+
+    # 2. Italian Book Test
+    italian_book = "Italian Short Stories for Beginners - Richards, Olly - 2016.epub"
+    it_ok = test_language_and_word_alignments(italian_book, chapter_idx=11, expected_language="Italian")
+    if not it_ok:
+        return False
+
+    print("\n[ALL TESTS PASSED] Multi-language detection, status bar display, and dual alignment verified!")
+    return True
+
 if __name__ == "__main__":
-    success = test_section_one_word_alignments()
+    success = run_all_tests()
     if not success:
         sys.exit(1)
+

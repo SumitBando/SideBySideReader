@@ -18,8 +18,8 @@ The **Side-by-Side Dual-Language Reader** is an interactive web application desi
 ## 3. Detailed Features & Behaviors
 
 ### 3.1 Dual-Pane Layout & Typography
-* **Left Pane**: Original source text (e.g. Spanish).
-* **Right Pane**: Translated target text (English).
+* **Left Pane**: Original source text displaying detected language name in header (e.g. `Original Text (Spanish)`, `Original Text (Italian)`).
+* **Right Pane**: Translated target text (`English Translation`).
 * **DOM Tag Preservation**: HTML heading structures (`<h1>`-`<h6>`), paragraphs (`<p>`), blockquotes, and `<div>` tags from original EPUB files are preserved in both panes.
 * **Theme Modes**:
   * Light Mode (default): slate/white palette
@@ -32,13 +32,14 @@ The **Side-by-Side Dual-Language Reader** is an interactive web application desi
 * Filters out nested container elements to prevent duplicate text extraction.
 * Sentence Segmentation: Splitting based on language punctuation rules (`.!?¿¡`).
 
-### 3.3 Gemini Translation & Alignment Engine
-* Model: `gemini-flash-latest` (or `gemini-2.5-flash-lite`).
-* Language Preservation Rule: If a source section is already in English, it is kept as-is without reverse translation to Spanish.
-* Dual Alignment Output:
+### 3.3 Dynamic Language Identification, Translation & Alignment Engine
+* **Automatic Language Identification**: Dynamically detects the primary non-English language in each section (e.g. Spanish, Italian, French, German, Russian, etc.) or identifies `English` if the section is entirely in English.
+* **Status Bar Language Display**: Bottom status bar renders the detected language (e.g. `Language: Italian`) alongside section navigation and token counts.
+* **Translation to English**: Translates non-English source language text into English while preserving English blocks/headings as-is without reverse translation.
+* **Dual Alignment Output**:
   * Sentence translation mapping (`src` $\leftrightarrow$ `tgt`).
   * Word and phrase alignments (`src_words` $\leftrightarrow$ `tgt_words`).
-  * Verb Grammatical Analysis: Returns `is_verb`, `infinitive` (root verb), and `tense_person` metadata for conjugated verbs.
+  * Verb Grammatical Analysis: Returns `is_verb`, `infinitive` (root verb), and `tense_person` metadata for conjugated verbs in the detected source language.
 
 ### 3.4 Interactive Dual Highlighting & Navigation
 * **Synchronized Sentence Hover**:
@@ -62,16 +63,17 @@ The **Side-by-Side Dual-Language Reader** is an interactive web application desi
 * Automated Verification Script: `tests/client.py`
 * Tests:
   1. FastHTML server status check (HTTP 200 OK).
-  2. DOM structure verification (`.sentence`, `.word-token`, `.pane`).
-  3. Section 1 token mapping integrity (validates `data-exact-target-ids` and `data-phrase-target-ids` across pane boundaries).
+  2. Multi-language detection verification (validates Spanish and Italian books and sections).
+  3. Status bar language display assertion (`#status-language`).
+  4. DOM structure verification (`.sentence`, `.word-token`, `.pane`).
+  5. Cross-pane token mapping integrity (validates `data-exact-target-ids` and `data-phrase-target-ids` across pane boundaries).
 
 # 5. Model choice
 ## 1. gemini-3.5-flash-lite (Recommended)
-Input Price (per 1…) ~$0.075,  Output Price (per …)  ~$0.30
+Input Price (per 1M tokens) ~$0.075, Output Price (per 1M tokens) ~$0.30
 - Superior Structured Output: 3.5 generation models have higher instruction-following precision when
       generating complex JSON structures (e.g. nested src_words, tgt_words, is_verb, infinitive, and tense_person
-      arrays simultaneously).
+      arrays simultaneously across various source languages).
  - Lower Latency: Optimized TTFT (Time-To-First-Token), making uncached page flips noticeably faster for the
       reader.
- - Better Idiomatic Translation: Translates complex Spanish idioms and literary phrasing more naturally
-      while maintaining strict phrase boundaries.
+ - Better Idiomatic Translation: Translates complex idioms and literary phrasing across multiple languages (Spanish, Italian, etc.) naturally while maintaining strict phrase boundaries.

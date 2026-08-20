@@ -7,6 +7,7 @@ An interactive dual-pane ebook / text reader designed for language learning. Fea
 ## Features
 
 - 📖 **Dual-Pane Synchronized Ebook Reader**: Side-by-side view with original text on the left and English translation on the right.
+- 🌐 **Automatic Non-English Language Detection**: Identifies the primary source language in each section (Spanish, Italian, French, German, etc.) and displays it in the bottom status bar.
 - 🎯 **Synchronized Sentence Hover**: Hover over a sentence in either pane to highlight its counterpart in real-time across panes in the other language.
 - 🔤 **Dual-Tone Word Sub-Matching**:
   - **Darker Orange**: Highlights exact target word sub-matches.
@@ -65,9 +66,10 @@ The app will serve locally at **http://localhost:5001/**.
   - `ArrowRight`: Navigate to Next Section.
 
 ### 3. Reader Controls & Interactivity
+- **Status Bar Language**: View the detected source language (e.g. `Language: Italian` or `Language: Spanish`) in the bottom bar.
 - **Sentence Hover**: Hover over sentences to visually link source and translation.
 - **Word Selection**: Click individual words to see exact word sub-matches and phrase alignments.
-- **Verb Analysis**: Click Spanish verbs to display popovers with root infinitive and tense info.
+- **Verb Analysis**: Click source language verbs to display popovers with root infinitive and tense info.
 - **Theme Controls**: Click **Light**, **Dark**, or **Sepia** to change theme mode.
 - **Font Sizing**: Click **A-** or **A+** to decrease/increase font size.
 

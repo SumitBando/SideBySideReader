@@ -381,6 +381,7 @@ def get(book: str = None, chapter_idx: int = 0):
     chapters = []
     current_sentences = []
     tokens_used = 0
+    detected_language = "English"
     epub_css = ""
     if selected_book:
         chapters = extract_chapters_from_epub(selected_book)
@@ -412,8 +413,9 @@ def get(book: str = None, chapter_idx: int = 0):
                     break
             
             # Align via Gemini / cache
-            aligned_blocks, tokens_used = aligner.align_sentences_batch(all_src_sentences[:25])
+            aligned_blocks, tokens_used, detected_lang = aligner.align_sentences_batch(all_src_sentences[:25])
             current_sentences = aligned_blocks
+            detected_language = detected_lang
 
     # Render DOM structure with block-level HTML tag preservation
     src_blocks_html = []
@@ -658,7 +660,7 @@ def get(book: str = None, chapter_idx: int = 0):
         ),
         Div(
             Div(
-                Div("Original Text (Spanish)", cls="pane-header"),
+                Div(f"Original Text ({detected_language})", cls="pane-header"),
                 Div(
                     Div(*src_blocks_html),
                     cls="pane calibre",
@@ -680,8 +682,10 @@ def get(book: str = None, chapter_idx: int = 0):
         Div(
             A("Previous Section", id="prev-btn", href=f"/?book={selected_book}&chapter_idx={prev_chap}" if chapter_idx > 0 else None, onclick="showLoading('Translating & Aligning Section with Gemini...')" if chapter_idx > 0 else None, cls=f"btn {'disabled' if chapter_idx <= 0 else ''}"),
             Div(
-                Span(f"Section {chapter_idx + 1} of {len(chapters)}" if chapters else "No chapters loaded"),
-                Span(f" • {aligner.model_name} tokens: {tokens_used:,}" if tokens_used else f" • {aligner.model_name} tokens: 0", style="margin-left: 8px; opacity: 0.8;")
+                Span(f"Language: {detected_language}", id="status-language", style="font-weight: 600; margin-right: 8px;"),
+                Span(f"• Section {chapter_idx + 1} of {len(chapters)}" if chapters else "• No chapters loaded"),
+                Span(f" • {aligner.model_name} tokens: {tokens_used:,}" if tokens_used else f" • {aligner.model_name} tokens: 0", style="margin-left: 8px; opacity: 0.8;"),
+                style="display: flex; align-items: center;"
             ),
             A("Next Section", id="next-btn", href=f"/?book={selected_book}&chapter_idx={next_chap}" if chapter_idx < len(chapters) - 1 else None, onclick="showLoading('Translating & Aligning Section with Gemini...')" if chapter_idx < len(chapters) - 1 else None, cls=f"btn {'disabled' if chapter_idx >= len(chapters) - 1 else ''}"),
             cls="footer-nav"

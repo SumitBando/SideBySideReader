@@ -2,8 +2,9 @@
 
 ## Goal
 Build an interactive, dual-language ebook / text reading web application for language learning.
-- **Left Pane**: Original language text (e.g., Spanish, Italian).
+- **Left Pane**: Original language text with dynamic language header (e.g., Spanish, Italian, French, German).
 - **Right Pane**: Translated English text.
+- **Dynamic Language Detection**: Identifies the primary non-English source language in each section and displays it in the bottom status bar.
 - **EPUB & Text Support**: Extract and paginate side-by-side EPUB content while preserving HTML structure (`<p>`, `<h1>`-`<h6>`, `blockquote`).
 - **Interactive Synchronized Highlighting & Alignment**:
   - Hovering a sentence in either language highlights the corresponding sentence in the opposing pane.
@@ -14,8 +15,8 @@ Build an interactive, dual-language ebook / text reading web application for lan
 - **Web Framework**: Python **FastHTML** (`python-fasthtml`) running on `uvicorn`.
 - **EPUB & Alignment Engine**:
   - `ebooklib` + `BeautifulSoup4` for EPUB extraction.
-  - **Gemini API** (`gemini-flash-latest` / `gemini-2.5-flash-lite`) pipeline for batch sentence translation, word/phrase alignment mapping, and verb grammar analysis.
-  - Local file caching (`./cache`) for aligned book structures, token indices, and Gemini responses.
+  - **Gemini API** (`gemini-flash-latest` / `gemini-3.5-flash-lite`) pipeline for multi-language detection, batch sentence translation, word/phrase alignment mapping, and verb grammar analysis.
+  - Local file caching (`./cache`) for aligned book structures, token indices, detected language, and Gemini responses.
 - **UI Design & Reader Interactivity**:
   - CSS Grid / Flex dual-pane reader layout.
   - Light, Dark, and Sepia visual theme modes with dynamic font scaling.
