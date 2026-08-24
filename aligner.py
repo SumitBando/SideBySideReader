@@ -118,7 +118,31 @@ class AlignmentEngine:
         content = "||".join(sentences)
         return hashlib.md5(content.encode('utf-8')).hexdigest()
 
-    def align_sentences_batch(self, sentences: List[str], tgt_lang: str = "English") -> Tuple[List[Dict[str, Any]], int, str]:
+    def align_sentences_batch(self, sentences: List[str], tgt_lang: str = "English", batch_size: int = 25) -> Tuple[List[Dict[str, Any]], int, str]:
+        if not sentences:
+            return [], 0, "Unknown"
+
+        if len(sentences) <= batch_size:
+            return self._align_single_batch(sentences, tgt_lang)
+
+        all_blocks = []
+        total_tokens = 0
+        detected_languages = []
+
+        for i in range(0, len(sentences), batch_size):
+            chunk = sentences[i:i + batch_size]
+            chunk_blocks, chunk_tokens, chunk_lang = self._align_single_batch(chunk, tgt_lang)
+            all_blocks.extend(chunk_blocks)
+            total_tokens += chunk_tokens
+            if chunk_lang:
+                detected_languages.append(chunk_lang)
+
+        # Primary detected language (prioritize non-English if present)
+        non_en_langs = [l for l in detected_languages if l != "English"]
+        final_lang = non_en_langs[0] if non_en_langs else (detected_languages[0] if detected_languages else "English")
+        return all_blocks, total_tokens, final_lang
+
+    def _align_single_batch(self, sentences: List[str], tgt_lang: str = "English") -> Tuple[List[Dict[str, Any]], int, str]:
         if not sentences:
             return [], 0, "Unknown"
 

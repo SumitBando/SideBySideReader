@@ -54,16 +54,6 @@ app, rt = fast_app(
                 color: var(--text-primary) !important;
                 background-color: transparent !important;
             }
-            .pane {
-                background: var(--bg-secondary) !important;
-                border-radius: 12px;
-                padding: 2rem;
-                overflow-y: auto;
-                height: 100%;
-                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
-                font-size: var(--font-size);
-                line-height: 1.8;
-            }
             .header-nav {
                 height: 60px;
                 background: var(--bg-secondary);
@@ -73,6 +63,7 @@ app, rt = fast_app(
                 padding: 0 1.5rem;
                 border-bottom: 1px solid rgba(255, 255, 255, 0.1);
                 box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                flex-shrink: 0;
             }
             .header-title { font-size: 1.25rem; font-weight: 700; color: var(--accent-color) !important; }
             .header-controls { display: flex; gap: 1rem; align-items: center; }
@@ -106,12 +97,14 @@ app, rt = fast_app(
                 gap: 1.5rem;
                 padding: 1.5rem;
                 height: calc(100vh - 110px);
+                min-height: 0;
                 overflow: hidden;
             }
             .pane-column {
                 display: flex;
                 flex-direction: column;
                 height: 100%;
+                min-height: 0;
                 overflow: hidden;
             }
             .pane-header {
@@ -122,6 +115,34 @@ app, rt = fast_app(
                 margin-bottom: 0.5rem;
                 font-weight: 700;
                 padding-bottom: 0.2rem;
+                flex-shrink: 0;
+            }
+            .pane {
+                background: var(--bg-secondary) !important;
+                border-radius: 12px;
+                padding: 2rem;
+                overflow-y: scroll;
+                height: 100%;
+                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+                font-size: var(--font-size);
+                line-height: 1.8;
+                scrollbar-width: thin;
+                scrollbar-color: var(--accent-color) var(--bg-primary);
+            }
+            /* Enhanced visible vertical scrollbars */
+            .pane::-webkit-scrollbar {
+                width: 8px;
+            }
+            .pane::-webkit-scrollbar-track {
+                background: var(--bg-primary);
+                border-radius: 4px;
+            }
+            .pane::-webkit-scrollbar-thumb {
+                background-color: var(--accent-color);
+                border-radius: 4px;
+            }
+            .pane::-webkit-scrollbar-thumb:hover {
+                background-color: var(--highlight-border);
             }
             .sentence {
                 border-radius: 4px;
@@ -287,9 +308,27 @@ app, rt = fast_app(
                     document.querySelectorAll('.sentence').forEach(el => el.classList.remove('active'));
                 });
 
-                // Word Selection on Click
+                // Word Selection & Sentence Auto-Scroll on Click
                 document.addEventListener('click', (e) => {
                     let wordElem = e.target ? e.target.closest('.word-token') : null;
+                    let sentElem = e.target ? e.target.closest('.sentence') : null;
+
+                    // Smoothly scroll corresponding sentence in the opposing pane into view if out of bounds
+                    if (sentElem) {
+                        let sid = sentElem.getAttribute('data-sid');
+                        let inLeft = !!sentElem.closest('#left-pane');
+                        let oppPane = document.getElementById(inLeft ? 'right-pane' : 'left-pane');
+                        if (oppPane && sid) {
+                            let oppSent = oppPane.querySelector(`.sentence[data-sid="${sid}"]`);
+                            if (oppSent) {
+                                let paneRect = oppPane.getBoundingClientRect();
+                                let sentRect = oppSent.getBoundingClientRect();
+                                if (sentRect.top < paneRect.top || sentRect.bottom > paneRect.bottom) {
+                                    oppSent.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                }
+                            }
+                        }
+                    }
 
                     // Clear previous word highlights and verb tooltips
                     document.querySelectorAll('.word-token').forEach(el => {
@@ -407,13 +446,9 @@ def get(book: str = None, chapter_idx: int = 0):
                         "class": " ".join(cls_list) if isinstance(cls_list, list) else str(cls_list),
                         "style": style_str
                     })
-                    if len(all_src_sentences) >= 25:
-                        break
-                if len(all_src_sentences) >= 25:
-                    break
             
-            # Align via Gemini / cache
-            aligned_blocks, tokens_used, detected_lang = aligner.align_sentences_batch(all_src_sentences[:25])
+            # Align via Gemini / cache for complete chapter
+            aligned_blocks, tokens_used, detected_lang = aligner.align_sentences_batch(all_src_sentences)
             current_sentences = aligned_blocks
             detected_language = detected_lang
 
@@ -441,26 +476,27 @@ def get(book: str = None, chapter_idx: int = 0):
         src_words = src_text.split()
         tgt_words = tgt_text.split()
 
-        # Build interactive tokens by strictly matching alignment phrase-pairs sequentially
         def normalize_word(word_str):
             return re.sub(r'^\W+|\W+$', '', word_str).lower()
 
-        # Pre-map alignment objects to exact token index spans in src_words and tgt_words
-        mapped_alignments = []
+        norm_src_words = [normalize_word(w) for w in src_words]
+        norm_tgt_words = [normalize_word(w) for w in tgt_words]
+
+        # Pre-map token alignment data
+        src_to_exact = [[] for _ in range(len(src_words))]
+        src_to_phrase = [[] for _ in range(len(src_words))]
+        tgt_to_exact = [[] for _ in range(len(tgt_words))]
+        tgt_to_phrase = [[] for _ in range(len(tgt_words))]
+        src_verbs = [None for _ in range(len(src_words))]
+
         src_cursor = 0
         tgt_cursor = 0
 
         for align in alignments:
             raw_src_items = align.get("src_words", [])
             raw_tgt_items = align.get("tgt_words", [])
-
-            align_src_tokens = []
-            for item in raw_src_items:
-                align_src_tokens.extend(item.split())
-            align_tgt_tokens = []
-            for item in raw_tgt_items:
-                align_tgt_tokens.extend(item.split())
-
+            align_src_tokens = [w for item in raw_src_items for w in item.split()]
+            align_tgt_tokens = [w for item in raw_tgt_items for w in item.split()]
             norm_align_src = [normalize_word(w) for w in align_src_tokens if normalize_word(w)]
             norm_align_tgt = [normalize_word(w) for w in align_tgt_tokens if normalize_word(w)]
 
@@ -468,7 +504,7 @@ def get(book: str = None, chapter_idx: int = 0):
             if norm_align_src:
                 c = src_cursor
                 while c <= len(src_words) - len(norm_align_src):
-                    if [normalize_word(src_words[c + k]) for k in range(len(norm_align_src))] == norm_align_src:
+                    if norm_src_words[c : c + len(norm_align_src)] == norm_align_src:
                         matched_src_indices = list(range(c, c + len(norm_align_src)))
                         src_cursor = c + len(norm_align_src)
                         break
@@ -476,7 +512,7 @@ def get(book: str = None, chapter_idx: int = 0):
                 if not matched_src_indices:
                     c = 0
                     while c <= len(src_words) - len(norm_align_src):
-                        if [normalize_word(src_words[c + k]) for k in range(len(norm_align_src))] == norm_align_src:
+                        if norm_src_words[c : c + len(norm_align_src)] == norm_align_src:
                             matched_src_indices = list(range(c, c + len(norm_align_src)))
                             break
                         c += 1
@@ -485,7 +521,7 @@ def get(book: str = None, chapter_idx: int = 0):
             if norm_align_tgt:
                 c = tgt_cursor
                 while c <= len(tgt_words) - len(norm_align_tgt):
-                    if [normalize_word(tgt_words[c + k]) for k in range(len(norm_align_tgt))] == norm_align_tgt:
+                    if norm_tgt_words[c : c + len(norm_align_tgt)] == norm_align_tgt:
                         matched_tgt_indices = list(range(c, c + len(norm_align_tgt)))
                         tgt_cursor = c + len(norm_align_tgt)
                         break
@@ -493,100 +529,62 @@ def get(book: str = None, chapter_idx: int = 0):
                 if not matched_tgt_indices:
                     c = 0
                     while c <= len(tgt_words) - len(norm_align_tgt):
-                        if [normalize_word(tgt_words[c + k]) for k in range(len(norm_align_tgt))] == norm_align_tgt:
+                        if norm_tgt_words[c : c + len(norm_align_tgt)] == norm_align_tgt:
                             matched_tgt_indices = list(range(c, c + len(norm_align_tgt)))
                             break
                         c += 1
 
-            mapped_alignments.append({
-                "src_indices": matched_src_indices,
-                "tgt_indices": matched_tgt_indices,
-                "align": align
-            })
+            if matched_src_indices and matched_tgt_indices:
+                is_verb = align.get("is_verb")
+                verb_dict = {
+                    "infinitive": align.get("infinitive", ""),
+                    "tense_person": align.get("tense_person", "")
+                } if is_verb else None
+
+                for si in matched_src_indices:
+                    if verb_dict and not src_verbs[si]:
+                        src_verbs[si] = verb_dict
+                    for ti in matched_tgt_indices:
+                        tid = f"{sid}_tgt_{ti}"
+                        sid_elem = f"{sid}_src_{si}"
+                        if norm_src_words[si] == norm_tgt_words[ti]:
+                            src_to_exact[si].append(tid)
+                            tgt_to_exact[ti].append(sid_elem)
+                        else:
+                            src_to_phrase[si].append(tid)
+                            tgt_to_phrase[ti].append(sid_elem)
 
         src_tokens_html = []
         for w_idx, w in enumerate(src_words):
             wid = f"{sid}_src_{w_idx}"
-            norm_w = normalize_word(w)
-            exact_target_ids = []
-            phrase_target_ids = []
-            verb_info = None
-
-            for ma in mapped_alignments:
-                if w_idx in ma["src_indices"]:
-                    # Find exact sub-matches within target tokens
-                    matched_exact_tgt_indices = []
-                    for ti in ma["tgt_indices"]:
-                        if normalize_word(tgt_words[ti]) == norm_w:
-                            matched_exact_tgt_indices.append(ti)
-
-                    # If no direct normalized string match, map by relative sub-index ratio
-                    if not matched_exact_tgt_indices and ma["src_indices"] and ma["tgt_indices"]:
-                        sub_pos = ma["src_indices"].index(w_idx)
-                        ratio = sub_pos / len(ma["src_indices"])
-                        target_sub_idx = min(len(ma["tgt_indices"]) - 1, int(ratio * len(ma["tgt_indices"])))
-                        matched_exact_tgt_indices.append(ma["tgt_indices"][target_sub_idx])
-
-                    for ti in ma["tgt_indices"]:
-                        tid = f"{sid}_tgt_{ti}"
-                        if ti in matched_exact_tgt_indices:
-                            exact_target_ids.append(tid)
-                        else:
-                            phrase_target_ids.append(tid)
-
-                    if ma["align"].get("is_verb"):
-                        verb_info = {
-                            "infinitive": ma["align"].get("infinitive", ""),
-                            "tense_person": ma["align"].get("tense_person", "")
-                        }
-
+            exact_ids = set(src_to_exact[w_idx])
+            phrase_ids = set(src_to_phrase[w_idx]) - exact_ids
             token_kwargs = {
                 "id": wid,
                 "cls": "word-token",
-                "data_exact_target_ids": ",".join(list(set(exact_target_ids))),
-                "data_phrase_target_ids": ",".join(list(set(phrase_target_ids) - set(exact_target_ids)))
+                "data_exact_target_ids": ",".join(exact_ids),
+                "data_phrase_target_ids": ",".join(phrase_ids)
             }
-            if verb_info:
+            v = src_verbs[w_idx]
+            if v:
                 token_kwargs["data_is_verb"] = "true"
-                token_kwargs["data_infinitive"] = verb_info["infinitive"]
-                token_kwargs["data_tense"] = verb_info["tense_person"]
+                token_kwargs["data_infinitive"] = v["infinitive"]
+                token_kwargs["data_tense"] = v["tense_person"]
 
             src_tokens_html.append(Span(w + " ", **token_kwargs))
 
         tgt_tokens_html = []
         for t_idx, tw in enumerate(tgt_words):
             tid = f"{sid}_tgt_{t_idx}"
-            norm_tw = normalize_word(tw)
-            exact_target_ids = []
-            phrase_target_ids = []
-
-            for ma in mapped_alignments:
-                if t_idx in ma["tgt_indices"]:
-                    matched_exact_src_indices = []
-                    for si in ma["src_indices"]:
-                        if normalize_word(src_words[si]) == norm_tw:
-                            matched_exact_src_indices.append(si)
-
-                    if not matched_exact_src_indices and ma["src_indices"] and ma["tgt_indices"]:
-                        sub_pos = ma["tgt_indices"].index(t_idx)
-                        ratio = sub_pos / len(ma["tgt_indices"])
-                        source_sub_idx = min(len(ma["src_indices"]) - 1, int(ratio * len(ma["src_indices"])))
-                        matched_exact_src_indices.append(ma["src_indices"][source_sub_idx])
-
-                    for si in ma["src_indices"]:
-                        sid_elem = f"{sid}_src_{si}"
-                        if si in matched_exact_src_indices:
-                            exact_target_ids.append(sid_elem)
-                        else:
-                            phrase_target_ids.append(sid_elem)
-
+            exact_ids = set(tgt_to_exact[t_idx])
+            phrase_ids = set(tgt_to_phrase[t_idx]) - exact_ids
             tgt_tokens_html.append(
                 Span(
                     tw + " ",
                     id=tid,
                     cls="word-token",
-                    data_exact_target_ids=",".join(list(set(exact_target_ids))),
-                    data_phrase_target_ids=",".join(list(set(phrase_target_ids) - set(exact_target_ids)))
+                    data_exact_target_ids=",".join(exact_ids),
+                    data_phrase_target_ids=",".join(phrase_ids)
                 )
             )
 

@@ -20,6 +20,7 @@ The **Side-by-Side Dual-Language Reader** is an interactive web application desi
 ### 3.1 Dual-Pane Layout & Typography
 * **Left Pane**: Original source text displaying detected language name in header (e.g. `Original Text (Spanish)`, `Original Text (Italian)`).
 * **Right Pane**: Translated target text (`English Translation`).
+* **Vertical Scrollbars**: Both panes feature dedicated, visible vertical scrollbars (`overflow-y: scroll`) with theme-adaptive styling.
 * **DOM Tag Preservation**: HTML heading structures (`<h1>`-`<h6>`), paragraphs (`<p>`), blockquotes, and `<div>` tags from original EPUB files are preserved in both panes.
 * **Theme Modes**:
   * Light Mode (default): slate/white palette
@@ -29,11 +30,13 @@ The **Side-by-Side Dual-Language Reader** is an interactive web application desi
 
 ### 3.2 EPUB Extraction & Structure Preservation
 * Extracts documents and embedded CSS from `.epub` files in the root project directory.
+* **Complete Chapter Extraction**: Extracts all sentences and blocks across the entire chapter without arbitrary sentence truncation.
 * **Chapter Title Resolution**: Dynamically extracts actual chapter/section names from EPUB Table of Contents (TOC), HTML heading tags (`<h1>`-`<h6>`), and document structure patterns, falling back to `Section N` only when no title is defined.
 * Filters out nested container elements to prevent duplicate text extraction.
 * Sentence Segmentation: Splitting based on language punctuation rules (`.!?¿¡`).
 
 ### 3.3 Dynamic Language Identification, Translation & Alignment Engine
+* **Chunked Batch Processing**: Handles full chapter content of any length by chunking sentences into batches of up to 25 sentences for Gemini API alignment, caching each batch individually for fast reloading.
 * **Automatic Language Identification**: Dynamically detects the primary non-English language in each section (e.g. Spanish, Italian, French, German, Russian, etc.) or identifies `English` if the section is entirely in English.
 * **Status Bar Language & Chapter Display**: Bottom status bar renders the detected language (e.g. `Language: Italian`) alongside the active chapter name, index, and token counts.
 * **Translation to English**: Translates non-English source language text into English while preserving English blocks/headings as-is without reverse translation.

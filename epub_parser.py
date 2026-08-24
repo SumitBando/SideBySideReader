@@ -3,6 +3,8 @@ import ebooklib
 from ebooklib import epub
 from bs4 import BeautifulSoup, NavigableString
 
+from functools import lru_cache
+
 def build_toc_map(book):
     toc_map = {}
     def parse_toc(items):
@@ -55,6 +57,7 @@ def extract_chapter_title(soup, item_name: str, idx: int, toc_map: dict, blocks:
 
     return f"Section {idx + 1}"
 
+@lru_cache(maxsize=32)
 def extract_chapters_from_epub(epub_path: str):
     book = epub.read_epub(epub_path)
     chapters = []
